@@ -7,7 +7,6 @@ struct ContentView: View {
     @State private var depthThreshold: Double = 3.0  // Default 3 meters, max 5m
     @State private var visualizationMode: VisualizationMode = .rainbow
     @State private var selectedResolutionIndex: Int
-    @State private var showInfo = false
     @State private var showResolutionPicker = false
     @State private var isChangingResolution = false
     @State private var statusHeight: CGFloat = 0
@@ -45,14 +44,6 @@ struct ContentView: View {
                                 )
                             
                             Spacer()
-                            
-                            Button(action: { showInfo.toggle() }) {
-                                Image(systemName: "info.circle")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(.white)
-                                    .padding(8)
-                                    .background(Circle().fill(Color.black.opacity(0.7)))
-                            }
                         }
                         .padding()
                         
@@ -232,13 +223,6 @@ struct ContentView: View {
             }
         } message: {
             Text("Higher resolutions may reduce performance")
-        }
-        .alert(isPresented: $showInfo) {
-            Alert(
-                title: Text("Depth Visualization Info"),
-                message: Text("This app shows RGB and depth data alignment from iPhone LiDAR.\n\n- Opacity: Adjust overlay transparency\n- Max Depth: Set maximum distance (0.5-5m)\n- Resolution: Select camera resolution and frame rate\n- Visualization modes for different views"),
-                dismissButton: .default(Text("OK"))
-            )
         }
     }
 }
