@@ -2,7 +2,6 @@ import Foundation
 
 enum VisualizationMode: Int {
     case rainbow = 0
-    case heat = 1
-    case grayscale = 2
-    case edge = 3
+    case grayscale = 1
+    case edge = 2
 }

@@ -9,14 +9,18 @@ struct MetalShaders {
     // Visualization modes match our Swift enum
     typedef enum {
         VisualizationModeRainbow = 0,
-        VisualizationModeHeat = 1,
-        VisualizationModeGrayscale = 2,
-        VisualizationModeEdge = 3
+        VisualizationModeGrayscale = 1,
+        VisualizationModeEdge = 2
     } VisualizationMode;
 
     // Convert depth to rainbow colors
-    float3 depthToRainbow(float depth) {
-        float a = (1.0 - depth) * 4.0;
+    float3 depthToRainbow(float depth, float maxDepthThreshold) {
+        // Map depth to the fixed range defined by the slider
+        // Instead of using data min/max, use 0 and the threshold value
+        float normalizedDepth = clamp(depth / maxDepthThreshold, 0.0, 1.0);
+        
+        // Apply rainbow coloring based on fixed range
+        float a = normalizedDepth * 4.0;
         float x = min(max(a - floor(a), 0.0), 1.0);
         int c = int(a) % 4;
         
@@ -26,17 +30,6 @@ struct MetalShaders {
             case 2: return float3(0.0, 1.0, x);      // Green to Cyan
             default: return float3(0.0, 1.0 - x, 1.0); // Cyan to Blue
         }
-    }
-
-    // Convert depth to heatmap colors
-    float3 depthToHeat(float depth) {
-        float invertedDepth = 1.0 - depth;
-        
-        return float3(
-            min(max(1.5 * invertedDepth - 0.5, 0.0), 1.0),
-            min(max(1.5 * abs(invertedDepth - 0.5), 0.0), 1.0),
-            min(max(1.5 * (1.0 - invertedDepth) - 0.5, 0.0), 1.0)
-        );
     }
 
     // Kernel function to process depth data
@@ -70,11 +63,7 @@ struct MetalShaders {
             // Apply different visualization modes
             switch (mode) {
                 case VisualizationModeRainbow:
-                    rgb = depthToRainbow(normalizedDepth);
-                    break;
-                    
-                case VisualizationModeHeat:
-                    rgb = depthToHeat(normalizedDepth);
+                    rgb = depthToRainbow(depthValue, threshold);
                     break;
                     
                 case VisualizationModeGrayscale:

@@ -7,6 +7,7 @@ struct ContentView: View {
     @State private var depthThreshold: Double = 3.0  // Default 3 meters, max 5m
     @State private var visualizationMode: VisualizationMode = .rainbow
     @State private var selectedResolutionIndex: Int
+    @State private var showInfo = false
     @State private var showResolutionPicker = false
     @State private var isChangingResolution = false
     @State private var statusHeight: CGFloat = 0
@@ -21,7 +22,7 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             // Black background
-            Color.black.edgesIgnoringSafeArea(.all)
+            Color.black.ignoresSafeArea()
             
             GeometryReader { geometry in
                 ZStack {
@@ -44,6 +45,14 @@ struct ContentView: View {
                                 )
                             
                             Spacer()
+                            
+                            Button(action: { showInfo.toggle() }) {
+                                Image(systemName: "info.circle")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(Circle().fill(Color.black.opacity(0.7)))
+                            }
                         }
                         .padding()
                         
@@ -55,7 +64,7 @@ struct ContentView: View {
                                     .resizable()
                                     .scaledToFit()
                                     .rotationEffect(.degrees(90)) // Rotate 90 degrees clockwise
-                                    .frame(maxWidth: geometry.size.width, maxHeight: geometry.size.height - statusHeight - 180) // Subtract status height and control height
+                                    .frame(maxWidth: geometry.size.width, maxHeight: geometry.size.height - statusHeight - 230) // Subtract status height and control height + legend
                             }
                             
                             // Depth overlay
@@ -64,13 +73,19 @@ struct ContentView: View {
                                     .resizable()
                                     .scaledToFit()
                                     .rotationEffect(.degrees(90)) // Rotate 90 degrees clockwise
-                                    .frame(maxWidth: geometry.size.width, maxHeight: geometry.size.height - statusHeight - 180)
+                                    .frame(maxWidth: geometry.size.width, maxHeight: geometry.size.height - statusHeight - 230)
                                     .opacity(overlayOpacity)
                             }
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         
                         Spacer()
+                        
+                        // Depth legend
+                        DepthLegend(
+                            maxDepth: Float(depthThreshold),
+                            mode: visualizationMode
+                        )
                         
                         // Bottom controls panel with fixed width
                         VStack(spacing: 12) {
@@ -224,17 +239,26 @@ struct ContentView: View {
         } message: {
             Text("Higher resolutions may reduce performance")
         }
+        .alert(isPresented: $showInfo) {
+            Alert(
+                title: Text("Depth Visualization Info"),
+                message: Text("This app shows RGB and depth data alignment from iPhone LiDAR.\n\n- Toggle overlay visibility\n- Adjust overlay transparency\n- Set maximum distance (0.5-5m)\n- Select camera resolution and frame rate\n- Choose from different visualization modes"),
+                dismissButton: .default(Text("OK")) {
+                    // Explicitly set to false to ensure dismissal
+                    showInfo = false
+                }
+            )
+        }
     }
 }
 
 // Add description to visualization mode
 extension VisualizationMode: CaseIterable {
-    static var allCases: [VisualizationMode] = [.rainbow, .heat, .grayscale, .edge]
+    static var allCases: [VisualizationMode] = [.rainbow, .grayscale, .edge]
     
     var description: String {
         switch self {
         case .rainbow: return "Rainbow"
-        case .heat: return "Heat"
         case .grayscale: return "Gray"
         case .edge: return "Edge"
         }
