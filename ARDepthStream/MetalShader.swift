@@ -16,19 +16,33 @@ struct MetalShaders {
     // Convert depth to rainbow colors
     float3 depthToRainbow(float depth, float maxDepthThreshold) {
         // Map depth to the fixed range defined by the slider
-        // Instead of using data min/max, use 0 and the threshold value
         float normalizedDepth = clamp(depth / maxDepthThreshold, 0.0, 1.0);
         
-        // Apply rainbow coloring based on fixed range
-        float a = normalizedDepth * 4.0;
-        float x = min(max(a - floor(a), 0.0), 1.0);
-        int c = int(a) % 4;
+        // Use a non-linear mapping to emphasize close objects
+        // This will dedicate more of the color spectrum to closer distances
+        normalizedDepth = pow(normalizedDepth, 1.5); // Non-linear emphasis on close objects
         
-        switch (c) {
-            case 0: return float3(1.0, x, 0.0);      // Red to Yellow
-            case 1: return float3(1.0 - x, 1.0, 0.0); // Yellow to Green
-            case 2: return float3(0.0, 1.0, x);      // Green to Cyan
-            default: return float3(0.0, 1.0 - x, 1.0); // Cyan to Blue
+        // Apply rainbow coloring with more bands for closer objects
+        if (normalizedDepth < 0.2) {
+            // Very close: deep red to red (0-20% of range)
+            float t = normalizedDepth / 0.2;
+            return float3(0.5 + 0.5 * t, 0.0, 0.0);
+        } else if (normalizedDepth < 0.4) {
+            // Close: red to orange to yellow (20-40% of range)
+            float t = (normalizedDepth - 0.2) / 0.2;
+            return float3(1.0, t * 0.8, 0.0);
+        } else if (normalizedDepth < 0.6) {
+            // Medium: yellow to green (40-60% of range)
+            float t = (normalizedDepth - 0.4) / 0.2;
+            return float3(1.0 - t, 0.8 + 0.2 * t, 0.0);
+        } else if (normalizedDepth < 0.8) {
+            // Medium-far: green to cyan (60-80% of range)
+            float t = (normalizedDepth - 0.6) / 0.2;
+            return float3(0.0, 1.0, t);
+        } else {
+            // Far: cyan to blue (80-100% of range)
+            float t = (normalizedDepth - 0.8) / 0.2;
+            return float3(0.0, 1.0 - t, 1.0);
         }
     }
 

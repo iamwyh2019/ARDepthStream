@@ -225,12 +225,6 @@ class MetalRenderer {
         
         let rgbImage = UIImage(cgImage: cgImage)
         
-        // Create a Metal texture from the depth buffer
-        guard let depthTexture = createTexture(from: depthBuffer, format: .r32Float) else {
-            print("Failed to create depth texture")
-            return rgbImage // Return original image if depth processing fails
-        }
-        
         // Create a bitmap context for the masked image
         UIGraphicsBeginImageContextWithOptions(rgbImage.size, false, rgbImage.scale)
         defer { UIGraphicsEndImageContext() }
@@ -243,6 +237,8 @@ class MetalRenderer {
         }
         
         // Get dimensions
+        let rgbWidth = CGFloat(CVPixelBufferGetWidth(rgbBuffer))
+        let rgbHeight = CGFloat(CVPixelBufferGetHeight(rgbBuffer))
         let depthWidth = CVPixelBufferGetWidth(depthBuffer)
         let depthHeight = CVPixelBufferGetHeight(depthBuffer)
         
@@ -256,9 +252,13 @@ class MetalRenderer {
         
         let bytesPerRow = CVPixelBufferGetBytesPerRow(depthBuffer)
         
-        // Scale factors between RGB and depth
-        let scaleX = rgbImage.size.width / CGFloat(depthWidth)
-        let scaleY = rgbImage.size.height / CGFloat(depthHeight)
+        // Calculate transformation with correct offset and scaling
+        let scaleX = rgbWidth / CGFloat(depthWidth)
+        let scaleY = rgbHeight / CGFloat(depthHeight)
+        
+        // Add slight offset to improve alignment (may need adjustment)
+        let offsetX: CGFloat = 0.5 * scaleX
+        let offsetY: CGFloat = 0.5 * scaleY
         
         // Set the blend mode to clear areas beyond threshold
         context.setBlendMode(.clear)
@@ -276,7 +276,12 @@ class MetalRenderer {
                 // If depth is beyond threshold, mask it
                 if depthValue <= 0 || depthValue > threshold || !depthValue.isFinite || depthValue.isNaN {
                     let rectSize = CGSize(width: CGFloat(sampling) * scaleX, height: CGFloat(sampling) * scaleY)
-                    let rect = CGRect(x: CGFloat(x) * scaleX, y: CGFloat(y) * scaleY, width: rectSize.width, height: rectSize.height)
+                    let rect = CGRect(
+                        x: CGFloat(x) * scaleX + offsetX,
+                        y: CGFloat(y) * scaleY + offsetY,
+                        width: rectSize.width,
+                        height: rectSize.height
+                    )
                     context.fill(rect)
                 }
             }
