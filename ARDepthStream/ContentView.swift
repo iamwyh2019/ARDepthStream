@@ -77,7 +77,10 @@ struct ContentView: View {
                                     .opacity(overlayOpacity)
                             }
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())  // So the ZStack can receive gestures
+                        .onTapGesture(count: 2) {
+                            arViewModel.captureAndSaveFrame()
+                        }
                         
                         Spacer()
                         

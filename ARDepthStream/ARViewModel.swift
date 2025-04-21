@@ -251,4 +251,57 @@ class ARViewModel: NSObject, ObservableObject, ARSessionDelegate {
             depthRangeNeedsUpdate = true
         }
     }
+    
+    func captureAndSaveFrame() {
+        guard let frame = arSession.currentFrame,
+              let depthBuffer = frame.sceneDepth?.depthMap else {
+            print("No depth or frame available")
+            return
+        }
+
+        let rgbBuffer = frame.capturedImage
+        let intrinsics = frame.camera.intrinsics
+        let timestamp = Int(Date().timeIntervalSince1970)
+
+        let fileManager = FileManager.default
+        let documents = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let savesFolder = documents.appendingPathComponent("Saves", isDirectory: true)
+
+        // Ensure Saves folder exists
+        if !fileManager.fileExists(atPath: savesFolder.path) {
+            try? fileManager.createDirectory(at: savesFolder, withIntermediateDirectories: true)
+        }
+
+        // Create timestamped folder
+        let targetFolder = savesFolder.appendingPathComponent("\(timestamp)", isDirectory: true)
+        try? fileManager.createDirectory(at: targetFolder, withIntermediateDirectories: true)
+
+        // File names
+        let rgbURL = targetFolder.appendingPathComponent("rgb_\(timestamp).png")
+        let plyURL = targetFolder.appendingPathComponent("depth_\(timestamp).ply")
+
+        // Save content using the corrected coordinate system
+        saveRGBImage(rgbBuffer, to: rgbURL)
+        
+        // Generate colored point cloud using the corrected function
+        let points = generateColoredPointCloud(depth: depthBuffer, rgb: rgbBuffer, rgbIntrinsics: intrinsics)
+        
+        // Write PLY file with proper formatting
+        writePLY(points: points, to: plyURL)
+
+        // Show confirmation popup
+        DispatchQueue.main.async {
+            let alert = UIAlertController(
+                title: "Saved",
+                message: "Saved RGB and PLY files to timestamp \(timestamp)\nPoints generated: \(points.count)",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+
+            if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootVC = scene.windows.first?.rootViewController {
+                rootVC.present(alert, animated: true)
+            }
+        }
+    }
 }
