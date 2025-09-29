@@ -8,6 +8,7 @@ class ARViewModel: NSObject, ObservableObject, ARSessionDelegate {
     @Published var rgbImage: UIImage?
     @Published var depthImage: UIImage?
     @Published var statusMessage: String = "Initializing AR Session..."
+    @Published var estimatedHeight: String = "Height: N/A"
     
     // AR properties
     private let arSession = ARSession()
@@ -62,6 +63,7 @@ class ARViewModel: NSObject, ObservableObject, ARSessionDelegate {
         
         // Configure AR session for better performance
         configuration.frameSemantics = [.sceneDepth]
+        configuration.planeDetection = [.horizontal]
         
         // Check if device supports depth
         if !ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
@@ -150,6 +152,20 @@ class ARViewModel: NSObject, ObservableObject, ARSessionDelegate {
                 
                 // Calculate average RGB frame rate
                 let avgRGBFrameRate = rgbFrameRateHistory.reduce(0, +) / Double(rgbFrameRateHistory.count)
+                
+                // Find the lowest horizontal plane
+                let planeAnchors = session.currentFrame?.anchors.compactMap { $0 as? ARPlaneAnchor }
+                let horizontalPlanes = planeAnchors?.filter { $0.alignment == .horizontal }
+                if let lowestPlane = horizontalPlanes?.min(by: { $0.transform.columns.3.y < $1.transform.columns.3.y }) {
+                    // The height is the difference between the camera's current position and the plane's position.
+                    let cameraY = frame.camera.transform.columns.3.y
+                    let floorY = lowestPlane.transform.columns.3.y
+                    let height = cameraY - floorY
+                    
+                    DispatchQueue.main.async {
+                        self.estimatedHeight = String(format: "Height: %.2fm", height)
+                    }
+                }
                 
                 DispatchQueue.main.async {
                     self.statusMessage = String(format: "RGB FPS: %.1f\nRGB: %d×%d\nDepth: %d×%d\nMax Depth: %.1fm",
@@ -266,6 +282,17 @@ class ARViewModel: NSObject, ObservableObject, ARSessionDelegate {
         // Get camera transform for gravity alignment
         let cameraTransform = frame.camera.transform
 
+        // Find the lowest horizontal plane to calculate height and floor level
+        var height: Float = 0.0
+        var floorY: Float = 0.0
+        let planeAnchors = arSession.currentFrame?.anchors.compactMap { $0 as? ARPlaneAnchor }
+        let horizontalPlanes = planeAnchors?.filter { $0.alignment == .horizontal }
+        if let lowestPlane = horizontalPlanes?.min(by: { $0.transform.columns.3.y < $1.transform.columns.3.y }) {
+            let cameraY = cameraTransform.columns.3.y
+            floorY = lowestPlane.transform.columns.3.y
+            height = cameraY - floorY
+        }
+
         let fileManager = FileManager.default
         let documents = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
         let savesFolder = documents.appendingPathComponent("Saves", isDirectory: true)
@@ -282,6 +309,11 @@ class ARViewModel: NSObject, ObservableObject, ARSessionDelegate {
         // File names
         let rgbURL = targetFolder.appendingPathComponent("rgb_\(timestamp).png")
         let plyURL = targetFolder.appendingPathComponent("depth_\(timestamp).ply")
+        let heightURL = targetFolder.appendingPathComponent("height_\(timestamp).txt")
+
+        // Save height and pose file
+        let heightAndPoseInfo = "Height: \(height)\n\nPose Transform Matrix:\n\(String(describing: cameraTransform))"
+        try? heightAndPoseInfo.write(to: heightURL, atomically: true, encoding: .utf8)
 
         // Save content using the corrected coordinate system
         saveRGBImage(rgbBuffer, to: rgbURL)

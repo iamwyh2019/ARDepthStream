@@ -191,19 +191,14 @@ struct ContentView: View {
             VStack {
                 HStack {
                     Spacer()
-                    VStack(spacing: 4) {
-                        Image(systemName: "iphone.landscape")
-                            .font(.system(size: 20))
-                            .foregroundColor(.white)
-                        Text("Hold Landscape Left")
-                            .font(.caption2)
-                            .foregroundColor(.white)
-                    }
-                    .padding(8)
-                    .background(Color.black.opacity(0.6))
-                    .cornerRadius(8)
-                    .padding(.trailing, 16)
-                    .padding(.top, 60)
+                    Text(arViewModel.estimatedHeight)
+                        .font(.caption)
+                        .padding(8)
+                        .background(Color.black.opacity(0.6))
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                        .padding(.trailing, 16)
+                        .padding(.top, 60)
                 }
                 Spacer()
             }

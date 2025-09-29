@@ -113,4 +113,3 @@ public func writePLY(points: [(SIMD3<Float>, SIMD3<UInt8>)], to url: URL) {
         print("Error writing PLY file: \(error)")
     }
 }
-
