@@ -263,6 +263,9 @@ class ARViewModel: NSObject, ObservableObject, ARSessionDelegate {
         let intrinsics = frame.camera.intrinsics
         let timestamp = Int(Date().timeIntervalSince1970)
 
+        // Get camera transform for gravity alignment
+        let cameraTransform = frame.camera.transform
+
         let fileManager = FileManager.default
         let documents = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
         let savesFolder = documents.appendingPathComponent("Saves", isDirectory: true)
@@ -282,10 +285,10 @@ class ARViewModel: NSObject, ObservableObject, ARSessionDelegate {
 
         // Save content using the corrected coordinate system
         saveRGBImage(rgbBuffer, to: rgbURL)
-        
+
         // Generate colored point cloud using the corrected function
-        let points = generateColoredPointCloud(depth: depthBuffer, rgb: rgbBuffer, rgbIntrinsics: intrinsics)
-        
+        let points = generateColoredPointCloud(depth: depthBuffer, rgb: rgbBuffer, rgbIntrinsics: intrinsics, cameraTransform: cameraTransform)
+
         // Write PLY file with proper formatting
         writePLY(points: points, to: plyURL)
 

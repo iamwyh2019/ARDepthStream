@@ -14,7 +14,7 @@ public func saveRGBImage(_ buffer: CVPixelBuffer, to url: URL) {
     }
 }
 
-public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, rgbIntrinsics: simd_float3x3) -> [(SIMD3<Float>, SIMD3<UInt8>)] {
+public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, rgbIntrinsics: simd_float3x3, cameraTransform: simd_float4x4) -> [(SIMD3<Float>, SIMD3<UInt8>)] {
     CVPixelBufferLockBaseAddress(depth, .readOnly)
     CVPixelBufferLockBaseAddress(rgb, .readOnly)
     defer {
@@ -46,6 +46,14 @@ public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, 
     let cx = depthIntrinsics.columns.2.x
     let cy = depthIntrinsics.columns.2.y
 
+    // Extract the rotation matrix from camera transform (upper-left 3x3)
+    // This transforms from camera space to world space (gravity-aligned)
+    let cameraRotation = simd_float3x3(
+        simd_make_float3(cameraTransform.columns.0),
+        simd_make_float3(cameraTransform.columns.1),
+        simd_make_float3(cameraTransform.columns.2)
+    )
+
     var result: [(SIMD3<Float>, SIMD3<UInt8>)] = []
 
     for y in 0..<depthHeight {
@@ -71,9 +79,14 @@ public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, 
                     let g = rgbBase[rgbOffset + 1]
                     let r = rgbBase[rgbOffset + 2]
 
-                    // Apply a transformation to convert to the right coordinate system
-                    // The -Z is needed because ARKit uses right-handed coordinate system
-                    result.append((SIMD3<Float>(X, Y, -z), SIMD3<UInt8>(r, g, b)))
+                    // Point in camera space (camera looks down -Z, Y is up, X is right)
+                    let pointCameraSpace = SIMD3<Float>(X, Y, -z)
+
+                    // Transform to world space (gravity-aligned)
+                    // ARKit's world space has Y pointing up (against gravity)
+                    let pointWorldSpace = cameraRotation * pointCameraSpace
+
+                    result.append((pointWorldSpace, SIMD3<UInt8>(r, g, b)))
                 }
             }
         }
@@ -100,3 +113,4 @@ public func writePLY(points: [(SIMD3<Float>, SIMD3<UInt8>)], to url: URL) {
         print("Error writing PLY file: \(error)")
     }
 }
+

@@ -7,7 +7,6 @@ struct ContentView: View {
     @State private var depthThreshold: Double = 3.0  // Default 3 meters, max 5m
     @State private var visualizationMode: VisualizationMode = .rainbow
     @State private var selectedResolutionIndex: Int
-    @State private var showInfo = false
     @State private var showResolutionPicker = false
     @State private var isChangingResolution = false
     @State private var statusHeight: CGFloat = 0
@@ -43,16 +42,8 @@ struct ContentView: View {
                                         }
                                     }
                                 )
-                            
+
                             Spacer()
-                            
-                            Button(action: { showInfo.toggle() }) {
-                                Image(systemName: "info.circle")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(.white)
-                                    .padding(8)
-                                    .background(Circle().fill(Color.black.opacity(0.7)))
-                            }
                         }
                         .padding()
                         
@@ -195,6 +186,27 @@ struct ContentView: View {
                     .edgesIgnoringSafeArea(.all)
                     .allowsHitTesting(false)
             }
+
+            // Orientation guide for landscape-left holding
+            VStack {
+                HStack {
+                    Spacer()
+                    VStack(spacing: 4) {
+                        Image(systemName: "iphone.landscape")
+                            .font(.system(size: 20))
+                            .foregroundColor(.white)
+                        Text("Hold Landscape Left")
+                            .font(.caption2)
+                            .foregroundColor(.white)
+                    }
+                    .padding(8)
+                    .background(Color.black.opacity(0.6))
+                    .cornerRadius(8)
+                    .padding(.trailing, 16)
+                    .padding(.top, 60)
+                }
+                Spacer()
+            }
         }
         .statusBar(hidden: true)
         .edgesIgnoringSafeArea(.all)
@@ -241,16 +253,6 @@ struct ContentView: View {
             }
         } message: {
             Text("Higher resolutions may reduce performance")
-        }
-        .alert(isPresented: $showInfo) {
-            Alert(
-                title: Text("Depth Visualization Info"),
-                message: Text("This app shows RGB and depth data alignment from iPhone LiDAR.\n\n- Toggle overlay visibility\n- Adjust overlay transparency\n- Set maximum distance (0.5-5m)\n- Select camera resolution and frame rate\n- Choose from different visualization modes"),
-                dismissButton: .default(Text("OK")) {
-                    // Explicitly set to false to ensure dismissal
-                    showInfo = false
-                }
-            )
         }
     }
 }
