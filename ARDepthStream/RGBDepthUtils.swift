@@ -47,12 +47,27 @@ public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, 
     let cy = depthIntrinsics.columns.2.y
 
     // Extract the rotation matrix from camera transform (upper-left 3x3)
-    // This transforms from camera space to world space (gravity-aligned)
     let cameraRotation = simd_float3x3(
         simd_make_float3(cameraTransform.columns.0),
         simd_make_float3(cameraTransform.columns.1),
         simd_make_float3(cameraTransform.columns.2)
     )
+
+    // Find the gravity-aligned "Up" vector in the camera's local space
+    let worldUp = simd_float3(0, 1, 0)
+    let upInCameraSpace = cameraRotation.transpose * worldUp
+
+    // Define the camera's nominal "Forward" vector
+    let forwardInCameraSpace = simd_float3(0, 0, -1)
+
+    // Create a new coordinate system that is gravity-aligned
+    // 1. The new Y-axis is the gravity 'Up' vector
+    let newY = normalize(upInCameraSpace)
+    // 2. The new Z-axis is the camera's 'Forward' vector made orthogonal to the new Y-axis
+    let newZ_projected = forwardInCameraSpace - dot(forwardInCameraSpace, newY) * newY
+    let newZ = normalize(newZ_projected)
+    // 3. The new X-axis is the cross product of Y and Z
+    let newX = cross(newY, newZ)
 
     var result: [(SIMD3<Float>, SIMD3<UInt8>)] = []
 
@@ -60,33 +75,31 @@ public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, 
         for x in 0..<depthWidth {
             let z = depthBase[y * depthStride + x]
             
-            // Filter invalid depth values
             if z.isFinite && z > 0 && z < 5.0 { // Adjust max depth as needed
-                // Convert from depth image coordinates to 3D coordinates
-                // The depth value z is in meters, but we need to convert the x,y coordinates properly
                 let X = (Float(x) - cx) * z / fx
-                let Y = (cy - Float(y)) * z / fy  // Note: Y is inverted in typical image coordinates
+                let Y = (cy - Float(y)) * z / fy
                 
-                // Map depth pixel to RGB pixel
                 let u_rgb = Int(round(Float(x) * Float(rgbWidth) / Float(depthWidth)))
                 let v_rgb = Int(round(Float(y) * Float(rgbHeight) / Float(depthHeight)))
 
                 if u_rgb >= 0, u_rgb < rgbWidth, v_rgb >= 0, v_rgb < rgbHeight {
                     let rgbOffset = v_rgb * rgbBytesPerRow + u_rgb * rgbChannels
-                    
-                    // BGRA format
                     let b = rgbBase[rgbOffset]
                     let g = rgbBase[rgbOffset + 1]
                     let r = rgbBase[rgbOffset + 2]
 
-                    // Point in camera space (camera looks down -Z, Y is up, X is right)
+                    // Point in camera's standard local space
                     let pointCameraSpace = SIMD3<Float>(X, Y, -z)
 
-                    // Transform to world space (gravity-aligned)
-                    // ARKit's world space has Y pointing up (against gravity)
-                    let pointWorldSpace = cameraRotation * pointCameraSpace
+                    // Project the point onto the new gravity-aligned basis vectors
+                    let finalX = dot(pointCameraSpace, newX)
+                    let finalY = dot(pointCameraSpace, newY)
+                    let finalZ = dot(pointCameraSpace, newZ)
+                    
+                    // The user wants +Z backward (-Z forward), so we flip the final Z
+                    let finalPoint = SIMD3<Float>(finalX, finalY, -finalZ)
 
-                    result.append((pointWorldSpace, SIMD3<UInt8>(r, g, b)))
+                    result.append((finalPoint, SIMD3<UInt8>(r, g, b)))
                 }
             }
         }
