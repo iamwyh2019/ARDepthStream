@@ -319,7 +319,7 @@ class ARViewModel: NSObject, ObservableObject, ARSessionDelegate {
         saveRGBImage(rgbBuffer, to: rgbURL)
 
         // Generate colored point cloud using the corrected function
-        let points = generateColoredPointCloud(depth: depthBuffer, rgb: rgbBuffer, rgbIntrinsics: intrinsics, cameraTransform: cameraTransform)
+        let points = generateColoredPointCloud(depth: depthBuffer, rgb: rgbBuffer, rgbIntrinsics: intrinsics, cameraTransform: cameraTransform, maxDepth: self.depthThreshold)
 
         // Write PLY file with proper formatting
         writePLY(points: points, to: plyURL)

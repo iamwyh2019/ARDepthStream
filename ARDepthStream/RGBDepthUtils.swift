@@ -14,7 +14,7 @@ public func saveRGBImage(_ buffer: CVPixelBuffer, to url: URL) {
     }
 }
 
-public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, rgbIntrinsics: simd_float3x3, cameraTransform: simd_float4x4) -> [(SIMD3<Float>, SIMD3<UInt8>)] {
+public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, rgbIntrinsics: simd_float3x3, cameraTransform: simd_float4x4, maxDepth: Float) -> [(SIMD3<Float>, SIMD3<UInt8>)] {
     CVPixelBufferLockBaseAddress(depth, .readOnly)
     CVPixelBufferLockBaseAddress(rgb, .readOnly)
     defer {
@@ -75,7 +75,7 @@ public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, 
         for x in 0..<depthWidth {
             let z = depthBase[y * depthStride + x]
             
-            if z.isFinite && z > 0 && z < 5.0 { // Adjust max depth as needed
+            if z.isFinite && z > 0 && z < maxDepth { // Adjust max depth as needed
                 let X = (Float(x) - cx) * z / fx
                 let Y = (cy - Float(y)) * z / fy
                 
