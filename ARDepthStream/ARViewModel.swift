@@ -26,12 +26,7 @@ class ARViewModel: NSObject, ObservableObject, ARSessionDelegate {
     private let frameProcessingInterval = 2  // Process every Nth frame for better performance
     
     // Settings
-    var visualizationMode: VisualizationMode = .rainbow {
-        didSet {
-            // Update visualization if mode changes
-            hasVisualizationChanged = true
-        }
-    }
+    let visualizationMode: VisualizationMode = .rainbow
     
     var depthThreshold: Float = 3.0 {
         didSet {

@@ -5,7 +5,6 @@ struct ContentView: View {
     @StateObject private var arViewModel = ARViewModel()
     @State private var overlayOpacity: Double = 0.5
     @State private var depthThreshold: Double = 3.0  // Default 3 meters, max 5m
-    @State private var visualizationMode: VisualizationMode = .rainbow
     @State private var selectedResolutionIndex: Int
     @State private var showResolutionPicker = false
     @State private var isChangingResolution = false
@@ -78,7 +77,7 @@ struct ContentView: View {
                         // Depth legend
                         DepthLegend(
                             maxDepth: Float(depthThreshold),
-                            mode: visualizationMode
+                            mode: .rainbow
                         )
                         
                         // Bottom controls panel with fixed width
@@ -152,23 +151,6 @@ struct ContentView: View {
                             }
                             .padding(.horizontal)
                             
-                            // Visualization mode picker - fixed width buttons
-                            HStack(spacing: 8) {
-                                ForEach(VisualizationMode.allCases, id: \.self) { mode in
-                                    Button(action: {
-                                        visualizationMode = mode
-                                        arViewModel.visualizationMode = mode
-                                    }) {
-                                        Text(mode.description)
-                                            .padding(.vertical, 8)
-                                            .frame(maxWidth: .infinity)
-                                            .background(visualizationMode == mode ? Color.blue : Color.gray.opacity(0.3))
-                                            .foregroundColor(.white)
-                                            .cornerRadius(8)
-                                    }
-                                }
-                            }
-                            .padding(.horizontal)
                         }
                         .frame(maxWidth: 500) // Limit max width of controls
                         .padding(.vertical, 16)
