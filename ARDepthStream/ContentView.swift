@@ -212,12 +212,16 @@ struct ContentView: View {
             VStack {
                 HStack {
                     Spacer()
-                    Text(arViewModel.estimatedHeight)
-                        .font(.caption)
-                        .padding(8)
-                        .background(Color.black.opacity(0.6))
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text(arViewModel.estimatedHeight)
+                            .font(.caption)
+                        Text(arViewModel.phoneCoordinate)
+                            .font(.caption)
+                    }
+                    .padding(8)
+                    .background(Color.black.opacity(0.6))
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
                         .padding(.trailing, 16)
                         .padding(.top, 60)
                 }

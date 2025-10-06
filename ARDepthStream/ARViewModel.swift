@@ -9,6 +9,7 @@ class ARViewModel: NSObject, ObservableObject, ARSessionDelegate {
     @Published var depthImage: UIImage?
     @Published var statusMessage: String = "Initializing AR Session..."
     @Published var estimatedHeight: String = "Height: N/A"
+    @Published var phoneCoordinate: String = "Coord: N/A"
     
     // AR properties
     private let arSession = ARSession()
@@ -157,8 +158,14 @@ class ARViewModel: NSObject, ObservableObject, ARSessionDelegate {
                     let floorY = lowestPlane.transform.columns.3.y
                     let height = cameraY - floorY
                     
+                    // Transform camera position to the robot's coordinate system
+                    let worldPosition = frame.camera.transform.columns.3
+                    let robotPosition = SIMD3<Float>(-worldPosition.z, -worldPosition.x, worldPosition.y)
+                    let coordString = String(format: "Coord: [%.2f, %.2f, %.2f]", robotPosition.x, robotPosition.y, robotPosition.z)
+
                     DispatchQueue.main.async {
                         self.estimatedHeight = String(format: "Height: %.2fm", height)
+                        self.phoneCoordinate = coordString
                     }
                 }
                 
