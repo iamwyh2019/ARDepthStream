@@ -9,6 +9,8 @@ struct ContentView: View {
     @State private var showResolutionPicker = false
     @State private var isChangingResolution = false
     @State private var statusHeight: CGFloat = 0
+    @State private var isRecording = false
+    @State private var recordingStatusMessage: String?
     
     private let resolutionManager = ResolutionManager.shared
     
@@ -70,6 +72,33 @@ struct ContentView: View {
                         .onTapGesture(count: 2) {
                             arViewModel.captureAndSaveFrame()
                         }
+
+                        // Record button
+                        Button(action: {
+                            isRecording.toggle()
+                            recordingStatusMessage = isRecording ? "Recording" : "Stopped recording"
+                            
+                            // In a future step, we will call arViewModel.startRecording() and arViewModel.stopRecording() here.
+                            
+                            // Clear the message after a delay
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                recordingStatusMessage = nil
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
+                                    .font(.title)
+                                    .foregroundColor(isRecording ? .red : .white)
+                                Text(isRecording ? "Stop" : "Record")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color.black.opacity(0.7))
+                            .cornerRadius(12)
+                        }
+                        .padding(.bottom, 8)
 
                         // Depth legend
                         DepthLegend(
@@ -159,6 +188,17 @@ struct ContentView: View {
                         .padding(.bottom, 16)
                     }
                 }
+            }
+            
+            // Recording status message
+            if let message = recordingStatusMessage {
+                Text(message)
+                    .font(.headline)
+                    .padding()
+                    .background(Color.black.opacity(0.8))
+                    .foregroundColor(.white)
+                    .cornerRadius(15)
+                    .transition(.opacity.animation(.easeIn(duration: 0.2)))
             }
             
             // Loading indicator overlay when changing resolution
