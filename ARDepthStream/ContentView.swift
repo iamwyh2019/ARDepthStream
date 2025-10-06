@@ -54,7 +54,6 @@ struct ContentView: View {
                                     .resizable()
                                     .scaledToFit()
                                     .rotationEffect(.degrees(90)) // Rotate 90 degrees clockwise
-                                    .frame(maxWidth: geometry.size.width, maxHeight: geometry.size.height - statusHeight - 230) // Subtract status height and control height + legend
                             }
                             
                             // Depth overlay
@@ -63,17 +62,15 @@ struct ContentView: View {
                                     .resizable()
                                     .scaledToFit()
                                     .rotationEffect(.degrees(90)) // Rotate 90 degrees clockwise
-                                    .frame(maxWidth: geometry.size.width, maxHeight: geometry.size.height - statusHeight - 230)
                                     .opacity(overlayOpacity)
                             }
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .contentShape(Rectangle())  // So the ZStack can receive gestures
                         .onTapGesture(count: 2) {
                             arViewModel.captureAndSaveFrame()
                         }
-                        
-                        Spacer()
-                        
+
                         // Depth legend
                         DepthLegend(
                             maxDepth: Float(depthThreshold),
@@ -115,6 +112,7 @@ struct ContentView: View {
                             }
                             .padding(.horizontal)
                             
+                            /*
                             // Resolution button
                             HStack {
                                 Text("Resolution")
@@ -150,6 +148,7 @@ struct ContentView: View {
                                 .disabled(isChangingResolution)
                             }
                             .padding(.horizontal)
+                            */
                             
                         }
                         .frame(maxWidth: 500) // Limit max width of controls
