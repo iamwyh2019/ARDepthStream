@@ -91,13 +91,17 @@ public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, 
                     // Point in camera's standard local space
                     let pointCameraSpace = SIMD3<Float>(X, Y, -z)
 
-                    // Project the point onto the new gravity-aligned basis vectors
+                    // Project the point onto the new gravity-aligned basis vectors (corrects for roll and pitch)
                     let finalX = dot(pointCameraSpace, newX)
                     let finalY = dot(pointCameraSpace, newY)
                     let finalZ = dot(pointCameraSpace, newZ)
                     
-                    // The user wants +Z backward (-Z forward), so we flip the final Z
-                    let finalPoint = SIMD3<Float>(finalX, finalY, -finalZ)
+                    // Apply the user's specified coordinate system transformation on the gravity-aligned point
+                    // Corrected Transformation:
+                    // Robot_X = Gravity_Z
+                    // Robot_Y = Gravity_X
+                    // Robot_Z = Gravity_Y
+                    let finalPoint = SIMD3<Float>(finalZ, finalX, finalY)
 
                     result.append((finalPoint, SIMD3<UInt8>(r, g, b)))
                 }
