@@ -3,6 +3,35 @@ import ARKit
 import UIKit
 import CoreImage
 
+public func calculateGravityAlignedBasis(cameraTransform: simd_float4x4) -> (right: SIMD3<Float>, up: SIMD3<Float>, forward: SIMD3<Float>) {
+    // When holding landscape-left:
+    // ARKit camera: +X=left, +Y=up, -Z=forward (toward scene)
+    // Desired robot: +X=forward, +Y=left, +Z=up (gravity-aligned)
+
+    let cameraRotation = simd_float3x3(
+        simd_make_float3(cameraTransform.columns.0),
+        simd_make_float3(cameraTransform.columns.1),
+        simd_make_float3(cameraTransform.columns.2)
+    )
+
+    // World up in world space
+    let worldUp = simd_float3(0, 1, 0)
+
+    // Camera's forward direction in world space (camera looks along -Z)
+    let cameraForward = simd_make_float3(cameraTransform.columns.2) * -1.0
+
+    // Project camera forward onto horizontal plane (remove vertical component)
+    let forwardProjected = cameraForward - dot(cameraForward, worldUp) * worldUp
+    let forward = normalize(forwardProjected)
+
+    // Left is perpendicular to both up and forward
+    // left = cross(up, forward) in right-handed system
+    let left = cross(worldUp, forward)
+
+    // Return as (right, up, forward) but right = -left
+    return (right: -left, up: worldUp, forward: forward)
+}
+
 public func saveRGBImage(_ buffer: CVPixelBuffer, to url: URL) {
     let ciImage = CIImage(cvPixelBuffer: buffer)
     let context = CIContext()
@@ -14,7 +43,7 @@ public func saveRGBImage(_ buffer: CVPixelBuffer, to url: URL) {
     }
 }
 
-public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, rgbIntrinsics: simd_float3x3, cameraTransform: simd_float4x4, maxDepth: Float) -> [(SIMD3<Float>, SIMD3<UInt8>)] {
+public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, rgbIntrinsics: simd_float3x3, cameraTransform: simd_float4x4, basis: (right: SIMD3<Float>, up: SIMD3<Float>, forward: SIMD3<Float>), maxDepth: Float) -> [(SIMD3<Float>, SIMD3<UInt8>)] {
     CVPixelBufferLockBaseAddress(depth, .readOnly)
     CVPixelBufferLockBaseAddress(rgb, .readOnly)
     defer {
@@ -46,29 +75,6 @@ public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, 
     let cx = depthIntrinsics.columns.2.x
     let cy = depthIntrinsics.columns.2.y
 
-    // Extract the rotation matrix from camera transform (upper-left 3x3)
-    let cameraRotation = simd_float3x3(
-        simd_make_float3(cameraTransform.columns.0),
-        simd_make_float3(cameraTransform.columns.1),
-        simd_make_float3(cameraTransform.columns.2)
-    )
-
-    // Find the gravity-aligned "Up" vector in the camera's local space
-    let worldUp = simd_float3(0, 1, 0)
-    let upInCameraSpace = cameraRotation.transpose * worldUp
-
-    // Define the camera's nominal "Forward" vector
-    let forwardInCameraSpace = simd_float3(0, 0, -1)
-
-    // Create a new coordinate system that is gravity-aligned
-    // 1. The new Y-axis is the gravity 'Up' vector
-    let newY = normalize(upInCameraSpace)
-    // 2. The new Z-axis is the camera's 'Forward' vector made orthogonal to the new Y-axis
-    let newZ_projected = forwardInCameraSpace - dot(forwardInCameraSpace, newY) * newY
-    let newZ = normalize(newZ_projected)
-    // 3. The new X-axis is the cross product of Y and Z
-    let newX = cross(newY, newZ)
-
     var result: [(SIMD3<Float>, SIMD3<UInt8>)] = []
 
     for y in 0..<depthHeight {
@@ -88,20 +94,25 @@ public func generateColoredPointCloud(depth: CVPixelBuffer, rgb: CVPixelBuffer, 
                     let g = rgbBase[rgbOffset + 1]
                     let r = rgbBase[rgbOffset + 2]
 
-                    // Point in camera's standard local space
+                    // Point in camera's standard local space (camera: +X=right, +Y=up, +Z=backward)
+                    // Camera looks along -Z, so forward is at -z depth
                     let pointCameraSpace = SIMD3<Float>(X, Y, -z)
 
-                    // Project the point onto the new gravity-aligned basis vectors (corrects for roll and pitch)
-                    let finalX = dot(pointCameraSpace, newX)
-                    let finalY = dot(pointCameraSpace, newY)
-                    let finalZ = dot(pointCameraSpace, newZ)
-                    
-                    // Apply the user's specified coordinate system transformation on the gravity-aligned point
-                    // Corrected Transformation:
-                    // Robot_X = Gravity_Z
-                    // Robot_Y = Gravity_X
-                    // Robot_Z = Gravity_Y
-                    let finalPoint = SIMD3<Float>(finalZ, finalX, finalY)
+                    // Transform from camera space to world space
+                    let cameraRotation = simd_float3x3(
+                        simd_make_float3(cameraTransform.columns.0),
+                        simd_make_float3(cameraTransform.columns.1),
+                        simd_make_float3(cameraTransform.columns.2)
+                    )
+                    let pointWorldSpace = cameraRotation * pointCameraSpace
+
+                    // Project onto robot basis: X=forward, Y=left, Z=up
+                    let left = -basis.right
+                    let finalX = dot(pointWorldSpace, basis.forward)  // Forward component
+                    let finalY = dot(pointWorldSpace, left)           // Left component
+                    let finalZ = dot(pointWorldSpace, basis.up)       // Up component
+
+                    let finalPoint = SIMD3<Float>(finalX, finalY, finalZ)
 
                     result.append((finalPoint, SIMD3<UInt8>(r, g, b)))
                 }

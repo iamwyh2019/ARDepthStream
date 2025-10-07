@@ -9,7 +9,6 @@ struct ContentView: View {
     @State private var showResolutionPicker = false
     @State private var isChangingResolution = false
     @State private var statusHeight: CGFloat = 0
-    @State private var isRecording = false
     @State private var recordingStatusMessage: String?
     
     private let resolutionManager = ResolutionManager.shared
@@ -75,10 +74,13 @@ struct ContentView: View {
 
                         // Record button
                         Button(action: {
-                            isRecording.toggle()
-                            recordingStatusMessage = isRecording ? "Recording" : "Stopped recording"
-                            
-                            // In a future step, we will call arViewModel.startRecording() and arViewModel.stopRecording() here.
+                            if arViewModel.isRecording {
+                                arViewModel.stopRecording()
+                                recordingStatusMessage = "Stopped recording"
+                            } else {
+                                arViewModel.startRecording()
+                                recordingStatusMessage = "Recording"
+                            }
                             
                             // Clear the message after a delay
                             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
@@ -86,10 +88,10 @@ struct ContentView: View {
                             }
                         }) {
                             HStack {
-                                Image(systemName: isRecording ? "stop.circle.fill" : "record.circle")
+                                Image(systemName: arViewModel.isRecording ? "stop.circle.fill" : "record.circle")
                                     .font(.title)
-                                    .foregroundColor(isRecording ? .red : .white)
-                                Text(isRecording ? "Stop" : "Record")
+                                    .foregroundColor(arViewModel.isRecording ? .red : .white)
+                                Text(arViewModel.isRecording ? "Stop" : "Record")
                                     .font(.headline)
                                     .foregroundColor(.white)
                             }
@@ -200,6 +202,27 @@ struct ContentView: View {
                     .cornerRadius(15)
                     .transition(.opacity.animation(.easeIn(duration: 0.2)))
             }
+
+            // Saving indicator overlay
+            if arViewModel.isSavingRecording {
+                ZStack {
+                    Color.black.opacity(0.7)
+                        .edgesIgnoringSafeArea(.all)
+
+                    VStack(spacing: 20) {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(1.5)
+
+                        Text("Saving recording...")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                    }
+                    .padding(40)
+                    .background(Color.black.opacity(0.8))
+                    .cornerRadius(20)
+                }
+            }
             
             // Loading indicator overlay when changing resolution
             if isChangingResolution {
@@ -216,6 +239,10 @@ struct ContentView: View {
                         Text(arViewModel.estimatedHeight)
                             .font(.caption)
                         Text(arViewModel.phoneCoordinate)
+                            .font(.caption)
+                        Text(arViewModel.phoneOrientationQuat)
+                            .font(.caption)
+                        Text(arViewModel.phoneOrientationEuler)
                             .font(.caption)
                     }
                     .padding(8)
